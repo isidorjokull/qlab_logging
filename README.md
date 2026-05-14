@@ -10,9 +10,9 @@ Logs remote clicker presses with timestamps to both a text file and REAPER proje
 | `reaper_scripts/reaper_osc.py` | Shared OSC sender — all REAPER communication goes through here |
 | `reaper_scripts/send_reaper_marker.py` | Writes marker name to queue, triggers REAPER via `reaper_osc.py` |
 | `reaper_scripts/reaper_setup.scpt` | QLab AppleScript — creates new recording session from template |
-| `reaper_scripts/reaper_start.scpt` | QLab AppleScript — starts/restarts recording at end of project |
-| `reaper_scripts/show_stop.scpt` | QLab AppleScript — stops recording and saves |
-| `reaper_scripts/show_quit.scpt` | QLab AppleScript — saves and quits REAPER |
+| `reaper_scripts/reaper_recording_start.scpt` | QLab AppleScript — starts/restarts recording at end of project |
+| `reaper_scripts/reaper_recording_stop.scpt` | QLab AppleScript — stops recording and saves |
+| `reaper_scripts/reaper_quit.scpt` | QLab AppleScript — saves and quits REAPER |
 | **`qlab_remote_marker.lua`** | REAPER ReaScript (installed once into REAPER's Scripts folder) |
 | `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue list + last group to text file |
 | `remote_click_marker.scpt` | QLab AppleScript — logs + adds named marker in REAPER |
@@ -29,7 +29,7 @@ Show start (one-time per show):
     → cp template → open .rpp
 
 Start/restart recording:
-  reaper_scripts/reaper_start.scpt
+  reaper_scripts/reaper_recording_start.scpt
     → reaper_scripts/reaper_osc.py 41804 (go to end of project)
     → reaper_scripts/reaper_osc.py 1013 (start recording)
 
@@ -40,8 +40,8 @@ Remote press:
                                  (each press gets a unique file in /tmp/qlab_markers/)
 
 Show end:
-  reaper_scripts/show_stop.scpt → reaper_scripts/reaper_osc.py 1016 (stop) → reaper_scripts/reaper_osc.py 40026 (save)
-  reaper_scripts/show_quit.scpt → reaper_scripts/reaper_osc.py 40026 (save) → reaper_scripts/reaper_osc.py 40004 (quit)
+  reaper_scripts/reaper_recording_stop.scpt → reaper_scripts/reaper_osc.py 1016 (stop) → reaper_scripts/reaper_osc.py 40026 (save)
+  reaper_scripts/reaper_quit.scpt → reaper_scripts/reaper_osc.py 40026 (save) → reaper_scripts/reaper_osc.py 40004 (quit)
 ```
 
 ---
@@ -88,9 +88,9 @@ Show end:
    | QLab cue | Script | When |
    |---|---|---|
    | Setup recording | `reaper_scripts/reaper_setup.scpt` | Once before the show starts |
-   | Start recording | `reaper_scripts/reaper_start.scpt` | Start/restart recording |
-   | Stop recording | `reaper_scripts/show_stop.scpt` | After the show ends |
-   | Close REAPER | `reaper_scripts/show_quit.scpt` | End of day |
+   | Start recording | `reaper_scripts/reaper_recording_start.scpt` | Start/restart recording |
+   | Stop recording | `reaper_scripts/reaper_recording_stop.scpt` | After the show ends |
+   | Close REAPER | `reaper_scripts/reaper_quit.scpt` | End of day |
 
 3. In the group that your MIDI clickers trigger, add two cues:
 
@@ -107,11 +107,11 @@ Used across all scripts via `reaper_osc.py`:
 
 | ID | Action | Used by |
 |---|---|---|
-| `41804` | Transport: Go to end of project | `reaper_start.scpt` |
-| `1013` | Transport: Record | `reaper_start.scpt` |
-| `1016` | Transport: Stop | `show_stop.scpt`, `show_quit.scpt` |
-| `40026` | File: Save project | `show_stop.scpt`, `show_quit.scpt` |
-| `40004` | File: Quit REAPER | `show_quit.scpt` |
+| `41804` | Transport: Go to end of project | `reaper_recording_start.scpt` |
+| `1013` | Transport: Record | `reaper_recording_start.scpt` |
+| `1016` | Transport: Stop | `reaper_recording_stop.scpt`, `reaper_quit.scpt` |
+| `40026` | File: Save project | `reaper_recording_stop.scpt`, `reaper_quit.scpt` |
+| `40004` | File: Quit REAPER | `reaper_quit.scpt` |
 
 ---
 
@@ -151,9 +151,9 @@ Make sure this matches the port set in REAPER → Preferences → Control Surfac
 When installing on a different machine, search for `/Users/isidor/git/qlab_logging` and replace it with the correct path to this project on the new system. Affected files:
 
 - **`remote_click_marker.scpt`** line 32 — path to `send_reaper_marker.py`
-- **`reaper_scripts/show_quit.scpt`** line 5 — path to `reaper_osc.py`
-- **`reaper_scripts/show_stop.scpt`** line 5 — path to `reaper_osc.py`
-- **`reaper_scripts/reaper_start.scpt`** line 5 — path to `reaper_osc.py`
+- **`reaper_scripts/reaper_quit.scpt`** line 5 — path to `reaper_osc.py`
+- **`reaper_scripts/reaper_recording_stop.scpt`** line 5 — path to `reaper_osc.py`
+- **`reaper_scripts/reaper_recording_start.scpt`** line 5 — path to `reaper_osc.py`
 - **`reaper_scripts/reaper_setup.scpt`** line 6 — `RECORD_DIR` (project root for templates and show files)
 - **`remote_click_log.scpt`** line 47 — log output directory (e.g. Desktop path)
 - **`reaper_scripts/send_reaper_marker.py`** — uses `__file__` to resolve `reaper_osc.py` dynamically, no path edit needed as long as both files stay in the same directory
@@ -188,7 +188,7 @@ send_action("1013")
 1. Duplicates the REAPER template file and timestamps the copy as `show_YYYY-MM-DD_HH-MM.rpp`
 2. Opens the new project in the running REAPER instance
 
-### Start recording (`reaper_scripts/reaper_start.scpt`)
+### Start recording (`reaper_scripts/reaper_recording_start.scpt`)
 1. Sends the playhead to the end of the project (so recording continues from the last stop point, not from the beginning)
 2. Starts recording
 
