@@ -3,10 +3,12 @@
 Sends a named marker to REAPER via OSC.
 Usage: send_reaper_marker.py <marker_name>
 """
-import sys
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) if hasattr(sys, 'real argv') else '/Users/isidor/git/qlab_logging')
 from reaper_osc import send_action
 
-REAPER_ACTION_ID = "_RSxxxxxxxxxx"
+REAPER_SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+REAPER_ACTION_ID = "_RS029a8bb47393fd930d3565e3798911ec978b0105"
 TEMP_FILE = "/tmp/qlab_reaper_marker.txt"
 
 

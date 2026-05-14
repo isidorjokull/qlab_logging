@@ -1,10 +1,10 @@
 -- |-----------------------------------------------------------------------|
 -- |  SHOW SETUP — QLab cue to set up a new recording session             |
--- |  Duplicates the REAPER template, opens it, and starts recording       |
+-- |  Duplicates the REAPER template, opens it. Use show_record to start.   |
 -- |-----------------------------------------------------------------------|
 
-set RECORD_DIR to "~/Documents/show_log/reaper_recordings"
-set TEMPLATE_FILE to "reaper_temp.rpp"
+set RECORD_DIR to "~/git/qlab_logging/reaper_temp"
+set TEMPLATE_FILE to "reaper_temp.RPP"
 
 set t to (current date)
 set dateStamp to ((year of t) as string) & "-" & ¬
@@ -14,12 +14,6 @@ set dateStamp to ((year of t) as string) & "-" & ¬
     text -2 thru -1 of ("0" & (minutes of t as string))
 
 set newFile to "show_" & dateStamp & ".rpp"
-set pythonScript to "~/git/qlab_logging/reaper_osc.py"
 
 do shell script "cp " & RECORD_DIR & "/" & TEMPLATE_FILE & " " & RECORD_DIR & "/" & newFile
 do shell script "open " & RECORD_DIR & "/" & newFile
-
-delay 1
-do shell script "python3 " & pythonScript & " 40042"
-delay 0.5
-do shell script "python3 " & pythonScript & " 1013"

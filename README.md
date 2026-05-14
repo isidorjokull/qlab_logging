@@ -11,7 +11,8 @@ Logs remote clicker presses with timestamps to both a text file and REAPER proje
 | `qlab_remote_marker.lua` | REAPER ReaScript — reads temp file, inserts named marker |
 | `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue info to text file |
 | `remote_click_marker.scpt` | QLab AppleScript — adds named marker in REAPER |
-| `show_setup.scpt` | QLab AppleScript — opens recording session from template |
+| `reaper_setup.scpt` | QLab AppleScript — creates new recording session from template |
+| `reaper_start.scpt` | QLab AppleScript — starts/restarts recording at end of project |
 | `show_stop.scpt` | QLab AppleScript — stops recording and saves |
 | `show_quit.scpt` | QLab AppleScript — saves and quits REAPER |
 
@@ -20,9 +21,13 @@ Logs remote clicker presses with timestamps to both a text file and REAPER proje
 ```
 QLab cue system (all via ~/git/qlab_logging/ scripts):
 
-Show start:
-  show_setup.scpt
-    → cp template → open .rpp → reaper_osc.py 40042 (go to start)
+Show start (one-time per show):
+  reaper_setup.scpt
+    → cp template → open .rpp
+
+Start/restart recording:
+  reaper_start.scpt
+    → reaper_osc.py 41804 (go to end of project)
     → reaper_osc.py 1013 (start recording)
 
 Remote press:
@@ -76,18 +81,19 @@ Show end:
 1. Open your QLab workspace
 2. Add cues at the start of your show:
 
-| QLab cue | Script | When |
-|---|---|---|
-| Start recording | `show_setup.scpt` | Before the show starts |
-| Stop recording | `show_stop.scpt` | After the show ends |
-| Close REAPER | `show_quit.scpt` | End of day |
+   | QLab cue | Script | When |
+   |---|---|---|
+   | Setup recording | `reaper_setup.scpt` | Once before the show starts |
+   | Start recording | `reaper_start.scpt` | Start/restart recording |
+   | Stop recording | `show_stop.scpt` | After the show ends |
+   | Close REAPER | `show_quit.scpt` | End of day |
 
 3. In the group that your MIDI clickers trigger, add two cues:
 
-| QLab cue | Script | What it does |
-|---|---|---|
-| Log only | `remote_click_log.scpt` | Writes timestamp to text file |
-| Log + marker | `remote_click_marker.scpt` | Logs + adds REAPER marker |
+   | QLab cue | Script | What it does |
+   |---|---|---|
+   | Log only | `remote_click_log.scpt` | Writes timestamp to text file |
+   | Log + marker | `remote_click_marker.scpt` | Logs + adds REAPER marker |
 
 ### Configure the identifier
 
@@ -106,8 +112,8 @@ Used across all scripts via `reaper_osc.py`:
 
 | ID | Action | Used by |
 |---|---|---|
-| `40042` | Transport: Go to start of project | `show_setup.scpt` |
-| `1013` | Transport: Record | `show_setup.scpt` |
+| `41804` | Transport: Go to end of project | `reaper_start.scpt` |
+| `1013` | Transport: Record | `reaper_start.scpt` |
 | `1016` | Transport: Stop | `show_stop.scpt`, `show_quit.scpt` |
 | `40026` | File: Save project | `show_stop.scpt`, `show_quit.scpt` |
 | `40004` | File: Quit REAPER | `show_quit.scpt` |
@@ -118,14 +124,14 @@ Used across all scripts via `reaper_osc.py`:
 
 ### Template and recording path
 
-In `show_setup.scpt`, adjust these to match your setup:
+In `reaper_setup.scpt`, adjust these to match your setup:
 
 ```applescript
-set RECORD_DIR to "~/Documents/show_log/reaper_recordings"
-set TEMPLATE_FILE to "reaper_temp.rpp"
+set RECORD_DIR to "~/git/qlab_logging/reaper_temp"
+set TEMPLATE_FILE to "reaper_temp.RPP"
 ```
 
-Your REAPER template (`.rpp` file) should have tracks pre-armed for recording so `show_setup.scpt` can open it and immediately start capturing.
+Your REAPER template (`.RPP` file) should have tracks pre-armed for recording so it can open and immediately start capturing.
 
 ### Log file location
 
@@ -166,11 +172,13 @@ from reaper_osc import send_action
 send_action("1013")
 ```
 
-### Show setup (`show_setup.scpt`)
+### Show setup (`reaper_setup.scpt`)
 1. Duplicates the REAPER template file and timestamps the copy as `show_YYYY-MM-DD_HH-MM.rpp`
 2. Opens the new project in the running REAPER instance
-3. Sends the playhead to project start
-4. Starts recording
+
+### Start recording (`reaper_start.scpt`)
+1. Sends the playhead to the end of the project (so recording continues from the last stop point, not from the beginning)
+2. Starts recording
 
 ### Log file (`remote_click_log.scpt`)
 - Runs inside QLab via AppleScript
@@ -198,8 +206,8 @@ send_action("1013")
 4. Test the temp file: run `python3 ~/git/qlab_logging/send_reaper_marker.py "test"` — it should appear briefly at `/tmp/qlab_reaper_marker.txt`, then disappear when REAPER processes it
 
 ### Show setup not opening the file
-- Make sure REAPER is running before firing `show_setup.scpt`
-- Verify `RECORD_DIR` and `TEMPLATE_FILE` paths in `show_setup.scpt` are correct
+- Make sure REAPER is running before firing `reaper_setup.scpt`
+- Verify `RECORD_DIR` and `TEMPLATE_FILE` paths in `reaper_setup.scpt` are correct
 - The `open` command uses your system's default app for `.rpp` files — ensure REAPER is set as the default
 
 ### Check what REAPER is receiving
