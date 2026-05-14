@@ -6,38 +6,42 @@ Logs remote clicker presses with timestamps to both a text file and REAPER proje
 
 | File | Purpose |
 |---|---|
-| `reaper_osc.py` | Shared OSC sender — all REAPER communication goes through here |
-| `send_reaper_marker.py` | Writes marker name to temp file, triggers REAPER via `reaper_osc.py` |
-| `qlab_remote_marker.lua` | REAPER ReaScript — reads temp file, inserts named marker |
+| **`reaper_scripts/`** | REAPER-related scripts |
+| `reaper_scripts/reaper_osc.py` | Shared OSC sender — all REAPER communication goes through here |
+| `reaper_scripts/send_reaper_marker.py` | Writes marker name to queue, triggers REAPER via `reaper_osc.py` |
+| `reaper_scripts/reaper_setup.scpt` | QLab AppleScript — creates new recording session from template |
+| `reaper_scripts/reaper_start.scpt` | QLab AppleScript — starts/restarts recording at end of project |
+| `reaper_scripts/show_stop.scpt` | QLab AppleScript — stops recording and saves |
+| `reaper_scripts/show_quit.scpt` | QLab AppleScript — saves and quits REAPER |
+| **`root/`** | QLab click logging scripts |
 | `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue info to text file |
 | `remote_click_marker.scpt` | QLab AppleScript — adds named marker in REAPER |
-| `reaper_setup.scpt` | QLab AppleScript — creates new recording session from template |
-| `reaper_start.scpt` | QLab AppleScript — starts/restarts recording at end of project |
-| `show_stop.scpt` | QLab AppleScript — stops recording and saves |
-| `show_quit.scpt` | QLab AppleScript — saves and quits REAPER |
+| **`shared/`** | Shared resources |
+| `qlab_remote_marker.lua` | REAPER ReaScript — reads marker queue, inserts named markers |
 
 ## Architecture
 
 ```
-QLab cue system (all via ~/git/qlab_logging/ scripts):
+QLab cue system:
 
 Show start (one-time per show):
-  reaper_setup.scpt
+  reaper_scripts/reaper_setup.scpt
     → cp template → open .rpp
 
 Start/restart recording:
-  reaper_start.scpt
-    → reaper_osc.py 41804 (go to end of project)
-    → reaper_osc.py 1013 (start recording)
+  reaper_scripts/reaper_start.scpt
+    → reaper_scripts/reaper_osc.py 41804 (go to end of project)
+    → reaper_scripts/reaper_osc.py 1013 (start recording)
 
 Remote press:
-  remote_click_log.scpt      → Desktop/qlab_remote_log_YYYY-MM-DD.txt
-  remote_click_marker.scpt   → send_reaper_marker.py → reaper_osc.py ACTION_ID
+  remote_click_log.scpt      → ~/Desktop/qlab_remote_log_YYYY-MM-DD.txt
+  remote_click_marker.scpt   → reaper_scripts/send_reaper_marker.py → reaper_scripts/reaper_osc.py ACTION_ID
                                  → REAPER: qlab_remote_marker.lua → named marker
+                                 (each press gets a unique file in /tmp/qlab_markers/)
 
 Show end:
-  show_stop.scpt → reaper_osc.py 1016 (stop) → reaper_osc.py 40026 (save)
-  show_quit.scpt → reaper_osc.py 40026 (save) → reaper_osc.py 40004 (quit)
+  reaper_scripts/show_stop.scpt → reaper_scripts/reaper_osc.py 1016 (stop) → reaper_scripts/reaper_osc.py 40026 (save)
+  reaper_scripts/show_quit.scpt → reaper_scripts/reaper_osc.py 40026 (save) → reaper_scripts/reaper_osc.py 40004 (quit)
 ```
 
 ---
@@ -65,7 +69,7 @@ Show end:
 2. In REAPER, press `?` to open the **Actions** window
 3. Click **New action** → **Load ReaScript** → select `qlab_remote_marker.lua`
 4. Find the action in the list, right-click → **Copy selected action command ID**
-5. Paste the command ID into `send_reaper_marker.py` line 5 (replace `_RSxxxxxxxxxx`)
+5. Paste the command ID into `reaper_scripts/send_reaper_marker.py` line 7 (replace `_RSxxxxxxxxxx`)
 
    Example: if you copied `00340_qlab_remote_marker`:
    ```python
@@ -83,10 +87,10 @@ Show end:
 
    | QLab cue | Script | When |
    |---|---|---|
-   | Setup recording | `reaper_setup.scpt` | Once before the show starts |
-   | Start recording | `reaper_start.scpt` | Start/restart recording |
-   | Stop recording | `show_stop.scpt` | After the show ends |
-   | Close REAPER | `show_quit.scpt` | End of day |
+   | Setup recording | `reaper_scripts/reaper_setup.scpt` | Once before the show starts |
+   | Start recording | `reaper_scripts/reaper_start.scpt` | Start/restart recording |
+   | Stop recording | `reaper_scripts/show_stop.scpt` | After the show ends |
+   | Close REAPER | `reaper_scripts/show_quit.scpt` | End of day |
 
 3. In the group that your MIDI clickers trigger, add two cues:
 
@@ -124,14 +128,14 @@ Used across all scripts via `reaper_osc.py`:
 
 ### Template and recording path
 
-In `reaper_setup.scpt`, adjust these to match your setup:
+In `reaper_scripts/reaper_setup.scpt`:
 
 ```applescript
 set RECORD_DIR to "~/git/qlab_logging/reaper_temp"
 set TEMPLATE_FILE to "reaper_temp.RPP"
 ```
 
-Your REAPER template (`.RPP` file) should have tracks pre-armed for recording so it can open and immediately start capturing.
+Your REAPER template (`.RPP` file) should have tracks pre-armed for recording.
 
 ### Log file location
 
@@ -143,7 +147,7 @@ set LOG_FILE to POSIX file ("/Users/isidor/Desktop/qlab_remote_log_" & dateStr &
 
 ### OSC port
 
-In `reaper_osc.py` line 8:
+In `reaper_scripts/reaper_osc.py` line 12:
 
 ```python
 PORT = 8000
@@ -155,28 +159,30 @@ Make sure this matches the port set in REAPER → Preferences → Control Surfac
 
 ## How it works
 
-### `reaper_osc.py`
+### `reaper_scripts/reaper_osc.py`
 The shared OSC engine for the entire system. Can be used from the command line:
 
 ```bash
-python3 ~/git/qlab_logging/reaper_osc.py 1013    # Start recording
-python3 ~/git/qlab_logging/reaper_osc.py 1016    # Stop recording
-python3 ~/git/qlab_logging/reaper_osc.py 40026   # Save project
-python3 ~/git/qlab_logging/reaper_osc.py 40004   # Quit REAPER
+python3 ~/git/qlab_logging/reaper_scripts/reaper_osc.py 1013    # Start recording
+python3 ~/git/qlab_logging/reaper_scripts/reaper_osc.py 1016    # Stop recording
+python3 ~/git/qlab_logging/reaper_scripts/reaper_osc.py 40026   # Save project
+python3 ~/git/qlab_logging/reaper_scripts/reaper_osc.py 40004    # Quit REAPER
 ```
 
 Or imported as a Python module:
 
 ```python
+import sys
+sys.path.insert(0, '/Users/isidor/git/qlab_logging/reaper')
 from reaper_osc import send_action
 send_action("1013")
 ```
 
-### Show setup (`reaper_setup.scpt`)
+### Show setup (`reaper_scripts/reaper_setup.scpt`)
 1. Duplicates the REAPER template file and timestamps the copy as `show_YYYY-MM-DD_HH-MM.rpp`
 2. Opens the new project in the running REAPER instance
 
-### Start recording (`reaper_start.scpt`)
+### Start recording (`reaper_scripts/reaper_start.scpt`)
 1. Sends the playhead to the end of the project (so recording continues from the last stop point, not from the beginning)
 2. Starts recording
 
@@ -192,8 +198,8 @@ send_action("1013")
 
 ### REAPER markers (`remote_click_marker.scpt`)
 - AppleScript builds a marker name: `[14:32:15] REMOTE-A`
-- Calls `send_reaper_marker.py` which writes the name to `/tmp/qlab_reaper_marker.txt` then sends OSC to trigger the REAPER Lua action
-- The Lua script reads the temp file, inserts the named marker at the current playhead position, then deletes the temp file
+- Calls `reaper_scripts/send_reaper_marker.py` which writes to `/tmp/qlab_markers/` (one unique file per press) then sends OSC to trigger the REAPER Lua action
+- The Lua script reads all pending files from the queue, inserts each named marker at the current playhead position, then deletes the processed files
 
 ---
 
@@ -201,23 +207,24 @@ send_action("1013")
 
 ### Marker not appearing in REAPER
 1. Verify the Lua script action is loaded: REAPER → Actions → search `qlab_remote_marker`
-2. Confirm the command ID in `send_reaper_marker.py` matches what you copied
+2. Confirm the command ID in `reaper_scripts/send_reaper_marker.py` matches what you copied
 3. Check REAPER OSC port is `8000` and "allow binding messages to actions" is checked
-4. Test the temp file: run `python3 ~/git/qlab_logging/send_reaper_marker.py "test"` — it should appear briefly at `/tmp/qlab_reaper_marker.txt`, then disappear when REAPER processes it
+4. Check for stale marker files: `ls /tmp/qlab_markers/` — if files accumulate, the Lua script isn't running or processing them
+5. Test: `python3 ~/git/qlab_logging/reaper_scripts/send_reaper_marker.py "test"` — a `.marker` file should appear briefly then disappear when REAPER processes it
 
 ### Show setup not opening the file
-- Make sure REAPER is running before firing `reaper_setup.scpt`
-- Verify `RECORD_DIR` and `TEMPLATE_FILE` paths in `reaper_setup.scpt` are correct
+- Make sure REAPER is running before firing `reaper_scripts/reaper_setup.scpt`
+- Verify `RECORD_DIR` and `TEMPLATE_FILE` paths in `reaper_scripts/reaper_setup.scpt` are correct
 - The `open` command uses your system's default app for `.rpp` files — ensure REAPER is set as the default
 
 ### Check what REAPER is receiving
 - The OSC messages are fire-and-forget UDP. If something isn't working, add a delay in the AppleScript:
   ```applescript
   delay 1
-  do shell script "python3 ~/git/qlab_logging/reaper_osc.py 1013"
+  do shell script "python3 ~/git/qlab_logging/reaper_scripts/reaper_osc.py 1013"
   ```
 
-### Reset the marker temp file
+### Reset the marker queue
 ```bash
-rm -f /tmp/qlab_reaper_marker.txt
+rm -rf /tmp/qlab_markers/
 ```

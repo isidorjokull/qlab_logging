@@ -1,9 +1,7 @@
 -- |-----------------------------------------------------------------------|
--- |  REMOTE CLICK LOGGER                                	  	 |
--- |  Change IDENTIFIER below to label this cue trigger  	 |
+-- |  REMOTE CLICK LOGGER                                                |
+-- |  Logs timestamp + active cue list + last group to a text file        |
 -- |-----------------------------------------------------------------------|
-
-set IDENTIFIER to "REMOTE-A"
 
 -- Pad a string to a fixed width
 on padRight(str, width)
@@ -18,8 +16,10 @@ end padRight
 tell application id "com.figure53.QLab.5"
 	tell front workspace
 		
+		delay 0.01
+
 		set activeCueList to q name of current cue list
-		
+
 		set lastGroup to "none"
 		set theCues to active cues
 		repeat with i from 1 to count of theCues
@@ -37,7 +37,7 @@ tell application id "com.figure53.QLab.5"
 			text -2 thru -1 of ("0" & (minutes of t as string)) & ":" & ¬
 			text -2 thru -1 of ("0" & (seconds of t as string))
 		
-		set logLine to "[" & timeStr & "] " & my padRight(IDENTIFIER, 10) & " | show: " & my padRight(activeCueList, 16) & " | cue: " & lastGroup
+		set logLine to "[" & timeStr & "] " & my padRight(activeCueList, 16) & " | group: " & lastGroup
 		
 		log logLine
 		
@@ -47,12 +47,13 @@ end tell
 set LOG_FILE to POSIX file ("/Users/isidor/Desktop/qlab_remote_log_" & dateStr & ".txt")
 
 try
-	set fileRef to open for access LOG_FILE with write permission
-	write (logLine & linefeed) as «class utf8» to fileRef starting at eof
-	close access fileRef
+    open for access LOG_FILE with write permission
+    set fileRef to result
+    write (logLine & linefeed) as «class utf8» to fileRef starting at eof
+    close access fileRef
 on error errMsg
-	try
-		close access LOG_FILE
-	end try
-	log "? Log write failed: " & errMsg
+    try
+        close access result
+    end try
+    log "? Log write failed: " & errMsg
 end try
