@@ -6,18 +6,18 @@ Logs remote clicker presses with timestamps to both a text file and REAPER proje
 
 | File | Purpose |
 |---|---|
-| **`reaper_scripts/`** | REAPER-related scripts |
+| **`reaper_scripts/`** | REAPER-related scripts (AppleScript + Python) |
 | `reaper_scripts/reaper_osc.py` | Shared OSC sender — all REAPER communication goes through here |
 | `reaper_scripts/send_reaper_marker.py` | Writes marker name to queue, triggers REAPER via `reaper_osc.py` |
 | `reaper_scripts/reaper_setup.scpt` | QLab AppleScript — creates new recording session from template |
 | `reaper_scripts/reaper_start.scpt` | QLab AppleScript — starts/restarts recording at end of project |
 | `reaper_scripts/show_stop.scpt` | QLab AppleScript — stops recording and saves |
 | `reaper_scripts/show_quit.scpt` | QLab AppleScript — saves and quits REAPER |
-| **`root/`** | QLab click logging scripts |
-| `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue info to text file |
-| `remote_click_marker.scpt` | QLab AppleScript — adds named marker in REAPER |
-| **`shared/`** | Shared resources |
-| `qlab_remote_marker.lua` | REAPER ReaScript — reads marker queue, inserts named markers |
+| **`qlab_remote_marker.lua`** | REAPER ReaScript (installed once into REAPER's Scripts folder) |
+| `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue list + last group to text file |
+| `remote_click_marker.scpt` | QLab AppleScript — logs + adds named marker in REAPER |
+
+Both remote scripts share identical QLab query logic (delay → cue list → last group). They differ only in output: `remote_click_log.scpt` writes to a text file, while `remote_click_marker.scpt` calls the Python bridge to insert a REAPER marker. Copy the script for each group/cuelist you want to log.
 
 ## Architecture
 
@@ -99,15 +99,6 @@ Show end:
    | Log only | `remote_click_log.scpt` | Writes timestamp to text file |
    | Log + marker | `remote_click_marker.scpt` | Logs + adds REAPER marker |
 
-### Configure the identifier
-
-Each `.scpt` file has an `IDENTIFIER` at the top. Change it per cue:
-
-```applescript
-set IDENTIFIER to "REMOTE-A"
-set IDENTIFIER to "REMOTE-B"
-```
-
 ---
 
 ## REAPER Action IDs
@@ -155,6 +146,21 @@ PORT = 8000
 
 Make sure this matches the port set in REAPER → Preferences → Control Surfaces → OSC.
 
+### Paths that change on a new system
+
+When installing on a different machine, search for `/Users/isidor/git/qlab_logging` and replace it with the correct path to this project on the new system. Affected files:
+
+- **`remote_click_marker.scpt`** line 32 — path to `send_reaper_marker.py`
+- **`reaper_scripts/show_quit.scpt`** line 5 — path to `reaper_osc.py`
+- **`reaper_scripts/show_stop.scpt`** line 5 — path to `reaper_osc.py`
+- **`reaper_scripts/reaper_start.scpt`** line 5 — path to `reaper_osc.py`
+- **`reaper_scripts/reaper_setup.scpt`** line 6 — `RECORD_DIR` (project root for templates and show files)
+- **`remote_click_log.scpt`** line 47 — log output directory (e.g. Desktop path)
+- **`reaper_scripts/send_reaper_marker.py`** — uses `__file__` to resolve `reaper_osc.py` dynamically, no path edit needed as long as both files stay in the same directory
+- The marker queue path (`/tmp/qlab_markers/`) is defined in **`reaper_scripts/reaper_osc.py`** (`MARKER_DIR`) and **`qlab_remote_marker.lua`** (`MARKER_DIR`). Change both when moving to a new system.
+
+Also update the Lua script install path: copy `qlab_remote_marker.lua` to the new machine's REAPER Scripts folder, then update the command ID in `send_reaper_marker.py` line 7.
+
 ---
 
 ## How it works
@@ -173,7 +179,7 @@ Or imported as a Python module:
 
 ```python
 import sys
-sys.path.insert(0, '/Users/isidor/git/qlab_logging/reaper')
+sys.path.insert(0, '/Users/isidor/git/qlab_logging/reaper_scripts')
 from reaper_osc import send_action
 send_action("1013")
 ```
@@ -193,11 +199,11 @@ send_action("1013")
 - Writes to `~/Desktop/qlab_remote_log_YYYY-MM-DD.txt`:
 
 ```
-[14:32:15] REMOTE-A  | show: Show Cue List   | cue: Click Group A
+[14:32:15] Show Cue List  | group: Click Group A
 ```
 
 ### REAPER markers (`remote_click_marker.scpt`)
-- AppleScript builds a marker name: `[14:32:15] REMOTE-A`
+- AppleScript builds a marker name: `[14:32:15] Show Cue List / Click Group A`
 - Calls `reaper_scripts/send_reaper_marker.py` which writes to `/tmp/qlab_markers/` (one unique file per press) then sends OSC to trigger the REAPER Lua action
 - The Lua script reads all pending files from the queue, inserts each named marker at the current playhead position, then deletes the processed files
 

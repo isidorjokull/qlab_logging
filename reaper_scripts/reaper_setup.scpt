@@ -3,7 +3,7 @@
 -- |  Duplicates the REAPER template, opens it. Use show_record to start.   |
 -- |-----------------------------------------------------------------------|
 
-set RECORD_DIR to "~/git/qlab_logging/reaper_temp"
+set RECORD_DIR to "/Users/isidor/git/qlab_logging/reaper_temp"
 set TEMPLATE_FILE to "reaper_temp.RPP"
 
 set t to (current date)

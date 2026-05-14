@@ -5,10 +5,8 @@ Usage: send_reaper_marker.py <marker_name>
 """
 import sys, os, time, uuid
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) if hasattr(sys, 'real_argv') else '/Users/isidor/git/qlab_logging/reaper_scripts')
-from reaper_osc import send_action
-
-MARKER_DIR = "/tmp/qlab_markers"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from reaper_osc import send_action, MARKER_DIR
 REAPER_ACTION_ID = "_RS029a8bb47393fd930d3565e3798911ec978b0105"
 
 

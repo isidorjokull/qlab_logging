@@ -10,6 +10,7 @@ import sys
 
 HOST = "127.0.0.1"
 PORT = 8000
+MARKER_DIR = "/tmp/qlab_markers"
 
 
 def _pad(data: bytes) -> bytes:

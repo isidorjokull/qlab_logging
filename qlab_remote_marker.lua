@@ -15,8 +15,8 @@ if handle then
                 local name = f:read("*a")
                 f:close()
                 os.remove(path)
-                name = name:gsub("%s+$", "")
                 if #name > 0 then
+                    name = name:gsub("%s+$", "")
                     local pos = reaper.GetPlayPosition()
                     reaper.AddProjectMarker2(0, false, pos, 0, name, -1, 0)
                 end
