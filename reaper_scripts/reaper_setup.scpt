@@ -14,8 +14,9 @@ set dateStamp to ((year of t) as string) & "-" & ¬
     text -2 thru -1 of ("0" & (minutes of t as string))
 
 set newFile to "show_" & dateStamp & ".rpp"
+set fullPath to RECORD_DIR & "/" & newFile
 
-do shell script "cp " & RECORD_DIR & "/" & TEMPLATE_FILE & " " & RECORD_DIR & "/" & newFile
-do shell script "open " & RECORD_DIR & "/" & newFile
+do shell script "[ -f " & quoted form of fullPath & " ] || cp " & quoted form of (RECORD_DIR & "/" & TEMPLATE_FILE) & " " & quoted form of fullPath
+do shell script "open " & quoted form of fullPath
 delay 2
 tell application id "com.figure53.QLab.5" to activate

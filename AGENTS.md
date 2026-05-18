@@ -28,13 +28,14 @@ REAPER (once)
 qlab_logging/
 ├── reaper_scripts/
 │   ├── reaper_osc.py              shared OSC engine; imported by all Python callers
-│   ├── send_reaper_marker.py      writes marker queue, triggers Lua action
+│   ├── send_reaper_marker.py     writes marker queue, triggers Lua action
 │   ├── reaper_setup.scpt          copies template, opens new .rpp, activates QLab
 │   ├── reaper_recording_start.scpt goes to end of project, starts recording
 │   ├── reaper_recording_stop.scpt stops recording, saves
-│   └── reaper_quit.scpt           saves, quits REAPER
-├── remote_click_log.scpt          logs timestamp + cue list + group to ~/Desktop/qlab_remote_log_*.txt
-├── remote_click_marker.scpt      builds [HH:MM:SS] cue list / group, triggers REAPER marker
+│   └── reaper_quit.scpt          saves, quits REAPER
+├── qlab_query.py                  OSC bridge — queries QLab for selected cue name
+├── remote_click_log.scpt          logs timestamp + cue list + selected group to ~/Desktop/qlab_remote_log_*.txt
+├── remote_click_marker.scpt      builds [HH:MM:SS] cue list / selected group, triggers REAPER marker
 ├── qlab_remote_marker.lua        REAPER ReaScript (installed once into REAPER Scripts folder)
 └── reaper_temp/
     └── reaper_temp.RPP           REAPER template (tracks must be pre-armed)
@@ -70,19 +71,19 @@ All AppleScripts use absolute paths (`/Users/isidor/git/qlab_logging`). When ins
 ## Paths That Must Be Updated Per System
 
 - `reaper_scripts/reaper_setup.scpt` line 6: `RECORD_DIR`
-- `remote_click_marker.scpt` line 32: Python script path
-- `remote_click_log.scpt` line 47: log output directory
+- `remote_click_marker.scpt`: path to `qlab_query.py`
+- `remote_click_log.scpt`: log output directory
 - `reaper_scripts/reaper_recording_start.scpt` line 5: Python script path
 - `reaper_scripts/reaper_recording_stop.scpt` line 5: Python script path
 - `reaper_scripts/reaper_quit.scpt` line 5: Python script path
-- `reaper_scripts/send_reaper_marker.py` line 8: fallback path (auto-resolves when both .py files are in same directory)
+- `reaper_scripts/send_reaper_marker.py`: fallback path (auto-resolves when both .py files are in same directory)
 - `reaper_scripts/reaper_osc.py` line 13: `MARKER_DIR`
 - `qlab_remote_marker.lua` line 5: `MARKER_DIR`
 
 ## AppleScript Coding Rules
 
-- Always use `delay 0.01` before reading the active cue list to ensure the most recent group cue has fired
 - Use `tell application id "com.figure53.QLab.5"` for all QLab AppleScript calls
+- `selected` is a property of the **workspace** (not the cue list) and returns a list of selected cues — use `set sel to selected` inside `tell front workspace`
 - Use `delay 0.5` before sending OSC actions to give REAPER time to load the project
 - Use `tell application id "com.figure53.QLab.5" to activate` to bring QLab to front (not `activate id "..."` which causes a compile error)
 - When calling external shell scripts that open apps (e.g. `open .rpp`), add a delay and re-activate QLab after
@@ -106,4 +107,4 @@ All AppleScripts use absolute paths (`/Users/isidor/git/qlab_logging`). When ins
 | Log only | `remote_click_log.scpt` | Each remote press |
 | Log + REAPER marker | `remote_click_marker.scpt` | Each remote press |
 
-Both `remote_click_log.scpt` and `remote_click_marker.scpt` share identical QLab query logic (delay → cue list → last group). Copy and use per group/cuelist.
+Both `remote_click_log.scpt` and `remote_click_marker.scpt` share identical QLab query logic (cue list → selected cues). Copy and use per group/cuelist.
