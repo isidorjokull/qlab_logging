@@ -14,10 +14,11 @@ Logs remote clicker presses with timestamps to both a text file and REAPER proje
 | `reaper_scripts/reaper_recording_stop.scpt` | QLab AppleScript — stops recording and saves |
 | `reaper_scripts/reaper_quit.scpt` | QLab AppleScript — saves and quits REAPER |
 | **`qlab_remote_marker.lua`** | REAPER ReaScript (installed once into REAPER's Scripts folder) |
-| `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue list + last group to text file |
+| **`qlab_query.py`** | OSC bridge — queries QLab for selected cue name (<1ms) |
+| `remote_click_log.scpt` | QLab AppleScript — logs timestamp + cue list + selected cue to text file |
 | `remote_click_marker.scpt` | QLab AppleScript — logs + adds named marker in REAPER |
 
-Both remote scripts share identical QLab query logic (delay → cue list → last group). They differ only in output: `remote_click_log.scpt` writes to a text file, while `remote_click_marker.scpt` calls the Python bridge to insert a REAPER marker. Copy the script for each group/cuelist you want to log.
+`remote_click_log.scpt` and `remote_click_marker.scpt` share identical QLab logic. They differ only in output: one writes to a text file, the other inserts a REAPER marker. Both query the selected cue via `qlab_query.py` over OSC for sub-millisecond latency.
 
 ## Architecture
 
@@ -34,9 +35,9 @@ Start/restart recording:
     → reaper_scripts/reaper_osc.py 1013 (start recording)
 
 Remote press:
-  remote_click_log.scpt      → ~/Desktop/qlab_remote_log_YYYY-MM-DD.txt
-  remote_click_marker.scpt   → reaper_scripts/send_reaper_marker.py → reaper_scripts/reaper_osc.py ACTION_ID
-                                 → REAPER: qlab_remote_marker.lua → named marker
+remote_click_log.scpt      → qlab_query.py → ~/Desktop/qlab_remote_log_*.txt
+  remote_click_marker.scpt   → qlab_query.py → send_reaper_marker.py → reaper_osc.py ACTION_ID
+                                  → REAPER: qlab_remote_marker.lua → named marker
                                  (each press gets a unique file in /tmp/qlab_markers/)
 
 Show end:
