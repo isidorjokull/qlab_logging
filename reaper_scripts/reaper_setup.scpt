@@ -17,3 +17,5 @@ set newFile to "show_" & dateStamp & ".rpp"
 
 do shell script "cp " & RECORD_DIR & "/" & TEMPLATE_FILE & " " & RECORD_DIR & "/" & newFile
 do shell script "open " & RECORD_DIR & "/" & newFile
+delay 2
+tell application id "com.figure53.QLab.5" to activate
