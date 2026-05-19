@@ -5,25 +5,20 @@
 
 on padRight(str, width)
 	set str to str as string
+	if (length of str) > width then
+		return text 1 thru width of str
+	end if
 	repeat while (length of str) < width
 		set str to str & " "
 	end repeat
 	return str
 end padRight
 
+set remoteName to "Rasmus" --Remote name
 
-set remoteName to "Rasmus"
-
-tell application id "com.figure53.QLab.5"
-	tell front workspace
-		set activeCueList to q name of current cue list
-		set sel to selected
-		if (count sel) > 0 then
-			set selectedGroup to q name of first item of sel
-		else
-			set selectedGroup to ""
-		end if
-	end tell
+tell application id "com.figure53.QLab.5" to tell front workspace
+	set activeCueList to q name of current cue list
+	set selectedGroup to q name of cue "SELECTED_CUE"
 end tell
 
 set t to (current date)
@@ -34,11 +29,9 @@ set timeStr to text -2 thru -1 of ("0" & (hours of t as string)) & ":" & ¬
 	text -2 thru -1 of ("0" & (minutes of t as string)) & ":" & ¬
 	text -2 thru -1 of ("0" & (seconds of t as string))
 
-set logLine to "[" & timeStr & "] " & my padRight(remoteName, 7) & "| " & my padRight(activeCueList, 20) & " | cue: " & my padRight(selectedGroup, 10)
+set logLine to "[" & timeStr & "] " & my padRight(remoteName, 7) & "| " & activeCueList & " | LT cue: " & my padRight(selectedGroup, 32) --LT cue = Last triggered cue
 
-log logLine
-
-set LOG_FILE to POSIX file ("/Users/isidor/git/qlab_logging/logs/qlab_remote_log_" & dateStr & ".txt")
+set LOG_FILE to POSIX file ("/Users/rkhus/Documents/qlab_logging/logs/qlab_remote_log_" & dateStr & ".txt")
 
 try
 	open for access LOG_FILE with write permission
